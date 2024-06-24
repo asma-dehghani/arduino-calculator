@@ -10,10 +10,10 @@
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // Define rotary encoder pins
-const int data_pin = 2;
-const int clock_pin = 3;
-volatile int volatile_rotary_counter = 0; // Stores encoder position change
-int cursor_index = 0;
+int clkPin = 2; // CLK pin of the rotary encoder
+int dtPin = 3; // DT pin of the rotary encoder
+int lastClkState;
+int cursorPos = 0;
 
 bool shift_key = false;
 char last_key;
@@ -34,16 +34,35 @@ char keys[kKeypadRows][kKeypadColumns] = {
 
 Keypad keypad = Keypad(makeKeymap(keys), row_pins, column_pins, kKeypadRows, kKeypadColumns);
 
-void UpdateCursor()
-{
-  if (millis() / 250 % 2 == 0)
-  {
-    lcd.cursor();
+void PlaceCursor() {
+  int row = cursorPos / 16;
+  int col = cursorPos % 16;
+  lcd.setCursor(col, row);
+  lcd.cursor();
+}
+
+void UpdateRotary() {
+  Serial.println("update rotary");
+  int clkState = digitalRead(clkPin);
+  if (clkState != lastClkState) {
+    if (digitalRead(dtPin) != clkState) {
+      // Clockwise rotation
+      if (cursorPos < 31) {
+        cursorPos++;
+        Serial.println("clockwise rotation");
+      }
+    }
+    else {
+      // Counterclockwise rotation
+      if (cursorPos > 0) {
+        cursorPos--;
+        Serial.println("counterclockwise rotation");
+      }
+    }
+    lastClkState = clkState;
+    PlaceCursor();
   }
-  else
-  {
-    lcd.noCursor();
-  }
+
 }
 
 void setup()
@@ -51,12 +70,9 @@ void setup()
   Serial.begin(115200);
   lcd.begin(16, 2);
 
-  // Set rotary encoder pins as inputs with internal pull-ups
-  pinMode(data_pin, INPUT_PULLUP);
-  pinMode(clock_pin, INPUT_PULLUP);
-
-  // Attach interrupt for rotary encoder clicks
-  attachInterrupt(digitalPinToInterrupt(data_pin), RotaryEncoderChange, CHANGE);
+ pinMode(clkPin, INPUT);
+ pinMode(dtPin, INPUT);
+ lastClkState = digitalRead(clkPin);
 }
 
 /**
@@ -234,32 +250,7 @@ double EvaluateExpression(const String &expression)
   return operands.peek();
 }
 
-void RotaryEncoderChange(String input_str)
-{
-  int reading = digitalRead(clock_pin);
-
-  if (reading != digitalRead(data_pin))
-  {
-    if (digitalRead(data_pin) == LOW)
-    {
-      volatile_rotary_counter++;
-    }
-    else
-    {
-      volatile_rotary_counter--;
-    }
-  }
-
-  // Update cursor position based on encoder movement and constrain within string bounds
-  cursor_index = (cursor_index + volatile_rotary_counter + input_str.length() - 1) % input_str.length();
-  // Reset encoder count for next change
-  volatile_rotary_counter = 0;
-  // Determine row based on cursor_index
-  int current_row = cursor_index < 16 ? 0 : 1; // Determine row based on cursor_index
-  lcd.setCursor(cursor_index, current_row);
-}
-
-/**
+ /**
  * Recpgnize operation for LCD to print.
  *
  * @param key Input char
@@ -377,11 +368,43 @@ void ProcessInput(char key)
 
 void loop()
 {
-  UpdateCursor();
-
+   UpdateRotary();
   char key = keypad.getKey();
   if (key)
   {
     ProcessInput(key);
   }
 }
+
+
+
+
+
+
+
+/* char key = keypad.getKey();
+  if (key) {
+    if (key == '*') {
+      // Clear character at cursor position
+      displayText[cursorPos] = ' ';
+    } else {
+      // Insert character at cursor position
+      displayText[cursorPos] = key;
+      if (cursorPos < 31) cursorPos++;
+    }
+    updateDisplay();
+  }
+}
+
+void updateCursor() {
+  int row = cursorPos / 16;
+  int col = cursorPos % 16;
+  lcd.setCursor(col, row);
+}
+
+void updateDisplay() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(displayText);
+}
+*/
