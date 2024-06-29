@@ -1,4 +1,5 @@
 #include <LiquidCrystal_I2C.h>
+#include <RotaryEncoder.h>
 #include <Keypad.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -6,12 +7,14 @@
 #include "StackArray.h"
 #include "tokenize.h"
 
+// Define rotary encoder pins
+const int  PIN_IN1 = 2;
+const int PIN_IN2 = 3;
+
 /* Display */
 LiquidCrystal_I2C lcd(0x27, 16, 2);
+RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03);
 
-// Define rotary encoder pins
-int clkPin = 2; // CLK pin of the rotary encoder
-int dtPin = 3; // DT pin of the rotary encoder
 int lastClkState;
 int cursorPos = 0;
 
@@ -34,45 +37,47 @@ char keys[kKeypadRows][kKeypadColumns] = {
 
 Keypad keypad = Keypad(makeKeymap(keys), row_pins, column_pins, kKeypadRows, kKeypadColumns);
 
-void PlaceCursor() {
+void PlaceCursor() 
+{
   int row = cursorPos / 16;
   int col = cursorPos % 16;
   lcd.setCursor(col, row);
   lcd.cursor();
 }
 
-void UpdateRotary() {
-  Serial.println("update rotary");
-  int clkState = digitalRead(clkPin);
-  if (clkState != lastClkState) {
-    if (digitalRead(dtPin) != clkState) {
-      // Clockwise rotation
-      if (cursorPos < 31) {
-        cursorPos++;
-        Serial.println("clockwise rotation");
-      }
-    }
-    else {
-      // Counterclockwise rotation
-      if (cursorPos > 0) {
-        cursorPos--;
-        Serial.println("counterclockwise rotation");
-      }
-    }
-    lastClkState = clkState;
-    PlaceCursor();
-  }
+long lastDebounceTime = 0;
+const long debounceDelay = 40; // Debounce delay in milliseconds
 
+void UpdateRotary() 
+{
+  static int pos = 0;
+  encoder.tick();
+  int newPos = encoder.getPosition();
+  if (pos != newPos) 
+  {
+    long currentTime = millis();
+    if ((currentTime - lastDebounceTime) > debounceDelay) 
+    {
+      int temp = newPos - pos;
+    
+      cursorPos -= temp;
+      Serial.println(newPos);
+      pos = newPos;
+      PlaceCursor();
+      lastDebounceTime = currentTime;
+    }
+    else
+    {
+      Serial.println("try...");
+      encoder.setPosition(pos);
+    }
+  }
 }
 
 void setup()
 {
   Serial.begin(115200);
   lcd.begin(16, 2);
-
- pinMode(clkPin, INPUT);
- pinMode(dtPin, INPUT);
- lastClkState = digitalRead(clkPin);
 }
 
 /**
@@ -368,17 +373,14 @@ void ProcessInput(char key)
 
 void loop()
 {
-   UpdateRotary();
+  delay(2);
+  UpdateRotary();
   char key = keypad.getKey();
   if (key)
   {
     ProcessInput(key);
   }
 }
-
-
-
-
 
 
 
