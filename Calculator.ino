@@ -17,6 +17,8 @@ RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03);
 
 int lastClkState;
 int cursorPos;
+int row;
+int col;
 
 
 bool shift_key = false;
@@ -31,10 +33,11 @@ const byte kKeypadColumns = 4;
 byte row_pins[kKeypadRows] = {4, 5, 6, 7};
 byte column_pins[kKeypadColumns] = {8, 9, 10, 11};
 char keys[kKeypadRows][kKeypadColumns] = {
-    {'1', '2', '3', 'A'},
-    {'4', '5', '6', 'B'},
-    {'7', '8', '9', 'C'},
-    {'*', '0', '#', 'D'}};
+  {'1', '2', '3', 'A'},
+  {'4', '5', '6', 'B'},
+  {'7', '8', '9', 'C'},
+  {'*', '0', '#', 'D'}
+};
 
 Keypad keypad = Keypad(makeKeymap(keys), row_pins, column_pins, kKeypadRows, kKeypadColumns);
 
@@ -42,36 +45,35 @@ Keypad keypad = Keypad(makeKeymap(keys), row_pins, column_pins, kKeypadRows, kKe
 long lastDebounceTime = 0;
 const long debounceDelay = 40; // Debounce delay in milliseconds
 
-void PlaceCursor() 
+void PlaceCursor()
 {
-  int row = cursorPos / 16;
-  int col = cursorPos % 16;
+  row = cursorPos / 16;
+  col = cursorPos % 16;
   lcd.setCursor(col, row);
   lcd.cursor();
+  Serial.println(col);
 }
 
-void UpdateRotary() 
+void UpdateRotary()
 {
   static int pos = 0;
   encoder.tick();
   int newPos = encoder.getPosition();
-  if (pos != newPos) 
+  if (pos != newPos)
   {
     long currentTime = millis();
-    if ((currentTime - lastDebounceTime) > debounceDelay) 
+    if ((currentTime - lastDebounceTime) > debounceDelay)
     {
       int temp = newPos - pos;
-    
+
       cursorPos -= temp;
-      Serial.println("cursor position:");
-      Serial.println(encoder.getPosition());
+
       pos = newPos;
       PlaceCursor();
       lastDebounceTime = currentTime;
     }
     else
     {
-      //Serial.println("try...");
       encoder.setPosition(pos);
     }
   }
@@ -79,6 +81,7 @@ void UpdateRotary()
 
 void setup()
 {
+  Serial.begin(115200);
   lcd.init();
   lcd.backlight();
   lcd.clear();
@@ -88,33 +91,33 @@ void setup()
 }
 
 /**
- * Check if a char is digit.
- *
- * @param chr Input char
- * @return True if the char is digit
- */
+   Check if a char is digit.
+
+   @param chr Input char
+   @return True if the char is digit
+*/
 bool IsDigit(char chr)
 {
   return (chr >= '0' && chr <= '9');
 }
 
 /**
- * Check if a char is Operator.
- *
- * @param chr Input char
- * @return True if the char is operator
- */
+   Check if a char is Operator.
+
+   @param chr Input char
+   @return True if the char is operator
+*/
 bool IsOperator(char chr)
 {
   return chr == '+' || chr == '-' || chr == '*' || chr == '/' || chr == '^';
 }
 
 /**
- * Check if a string is number.
- *
- * @param input_number Input char
- * @return True if the string is a number
- */
+   Check if a string is number.
+
+   @param input_number Input char
+   @return True if the string is a number
+*/
 bool IsNumber(const String &input_nubmer)
 {
   int size_of_input_number = strlen(input_nubmer.c_str());
@@ -129,11 +132,11 @@ bool IsNumber(const String &input_nubmer)
 }
 
 /**
- * Determine priority of an operator.
- *
- * @param op Input char
- * @return its priority as a number
- */
+   Determine priority of an operator.
+
+   @param op Input char
+   @return its priority as a number
+*/
 int Precedence(char op)
 {
   if (op == '+' || op == '-')
@@ -146,37 +149,37 @@ int Precedence(char op)
 }
 
 /**
- * Apply operator on the operands.
- *
- * @param first_number Input char
- * @param second_number Input char
- * @return the result of operation
- */
+   Apply operator on the operands.
+
+   @param first_number Input char
+   @param second_number Input char
+   @return the result of operation
+*/
 double ApplyOperator(uint32_t first_number, uint32_t second_number, char op)
 {
   switch (op)
   {
-  case '+':
-    return first_number + second_number;
-  case '-':
-    return second_number - first_number;
-  case '*':
-    return first_number * second_number;
-  case '/':
-    return second_number / static_cast<double>(first_number);
-  case '^':
-    return pow(second_number, first_number);
-  default:
-    return 0;
+    case '+':
+      return first_number + second_number;
+    case '-':
+      return second_number - first_number;
+    case '*':
+      return first_number * second_number;
+    case '/':
+      return second_number / static_cast<double>(first_number);
+    case '^':
+      return pow(second_number, first_number);
+    default:
+      return 0;
   }
 }
 
 /**
- * Parse and evaluate a mathematical expression
- *
- * @param expression Input char
- * @return the result of a methematical expression
- */
+   Parse and evaluate a mathematical expression
+
+   @param expression Input char
+   @return the result of a methematical expression
+*/
 double EvaluateExpression(const String &expression)
 {
   StackArray<char> operators;
@@ -262,80 +265,80 @@ double EvaluateExpression(const String &expression)
   return operands.peek();
 }
 
- /**
- * Recognize operation for LCD to print.
- *
- * @param key Input char
- */
+/**
+  Recognize operation for LCD to print.
+
+  @param key Input char
+*/
 void RecognizeOperationforLCD(char key)
 {
   switch (key)
   {
-  case 'A':
-    if (shift_key == true)
-    {
-      lcd.print("(");
-      memory += "(";
-    }
-    else
-    {
-      lcd.print("+");
-      memory += "+";
-    }
-    break;
-  case 'B':
-    if (shift_key == true)
-    {
-      lcd.print(")");
-      memory += ")";
-    }
-    else
-    {
-      lcd.print("-");
-      memory += "-";
-    }
-    break;
-  case 'C':
-    if (shift_key == true)
-    {
-      lcd.print("^");
-      memory += "^";
-    }
-    else
-    {
-      lcd.print("*");
-      memory += "*";
-    }
-    break;
-  case 'D':
-    if(shift_key == true)
-    {
-
-      String bufinput = memory;
-      memory = "";
-      for (int i=0 ; i<bufinput.length() ; i++)
+    case 'A':
+      if (shift_key == true)
       {
-        if(i != cursorPos)
-        {
-          memory += bufinput[i];
-        }
+        lcd.print("(");
+        memory += "(";
       }
-      lcd.clear();
-      lcd.print(memory);
+      else
+      {
+        lcd.print("+");
+        memory += "+";
+      }
+      break;
+    case 'B':
+      if (shift_key == true)
+      {
+        lcd.print(")");
+        memory += ")";
+      }
+      else
+      {
+        lcd.print("-");
+        memory += "-";
+      }
+      break;
+    case 'C':
+      if (shift_key == true)
+      {
+        lcd.print("^");
+        memory += "^";
+      }
+      else
+      {
+        lcd.print("*");
+        memory += "*";
+      }
+      break;
+    case 'D':
+      if (shift_key == true)
+      {
 
-    }
-    else{
-      lcd.print("/");
-      memory += "/";
-    }
-    break;
+        String bufinput = memory;
+        memory = "";
+        for (int i = 0 ; i < bufinput.length() ; i++)
+        {
+          if (i != cursorPos)
+          {
+            memory += bufinput[i];
+          }
+        }
+        lcd.clear();
+        lcd.print(memory);
+
+      }
+      else {
+        lcd.print("/");
+        memory += "/";
+      }
+      break;
   }
   last_key = key;
 }
 
 /**
- * Print final result on LCD.
- */
+   Print final result on LCD.
+*/
 void PrintResult()
 {
   char buffer[10];
@@ -346,10 +349,10 @@ void PrintResult()
 }
 
 /**
- * Process keyboard input.
- *
- * @param key Input char
- */
+   Process keyboard input.
+
+   @param key Input char
+*/
 void ProcessInput(char key)
 {
   if ('B' == key && memory == "" && !shift_key)
@@ -361,39 +364,48 @@ void ProcessInput(char key)
 
   switch (key)
   {
-  case 'A':
-  case 'B':
-  case 'C':
-  case 'D':
-    RecognizeOperationforLCD(key);
-    return;
-  case '*':
-    if (shift_key)
-    {
-      if (last_key == '*')
+    case 'A':
+    case 'B':
+    case 'C':
+    case 'D':
+      RecognizeOperationforLCD(key);
+      return;
+    case '*':
+      if (shift_key)
       {
-        shift_key = false;
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        memory = "";
-        return;
+        if (last_key == '*')
+        {
+          shift_key = false;
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          memory = "";
+          return;
+        }
       }
-    }
-    shift_key = !shift_key;
-    RecognizeOperationforLCD(key);
-    return;
-  case '#':
-    PrintResult();
-    shift_key = false;
-    return;
+      shift_key = !shift_key;
+      RecognizeOperationforLCD(key);
+      return;
+    case '#':
+      PrintResult();
+      shift_key = false;
+      return;
   }
 
   if (key)
   {
-    memory += String(key);
-  }
+    if (col == -1) {
+      String temp = memory;
+      memory = String(key) + temp;
+    }
+    else if (col < memory.length() && col != 0 && col != -1) {
+      memory = memory.substring(0, col) + String(key) + memory.substring(col);
+    } else {
+      memory += String(key);
+    }
 
-  lcd.print(key);
+  }
+  lcd.clear();
+  lcd.print(memory);
 }
 
 void loop()
