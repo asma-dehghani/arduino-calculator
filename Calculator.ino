@@ -381,32 +381,3 @@ void loop()
     ProcessInput(key);
   }
 }
-
-
-
-/* char key = keypad.getKey();
-  if (key) {
-    if (key == '*') {
-      // Clear character at cursor position
-      displayText[cursorPos] = ' ';
-    } else {
-      // Insert character at cursor position
-      displayText[cursorPos] = key;
-      if (cursorPos < 31) cursorPos++;
-    }
-    updateDisplay();
-  }
-}
-
-void updateCursor() {
-  int row = cursorPos / 16;
-  int col = cursorPos % 16;
-  lcd.setCursor(col, row);
-}
-
-void updateDisplay() {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print(displayText);
-}
-*/
