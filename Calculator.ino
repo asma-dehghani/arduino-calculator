@@ -16,7 +16,8 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03);
 
 int lastClkState;
-int cursorPos = 0;
+int cursorPos;
+
 
 bool shift_key = false;
 char last_key;
@@ -37,6 +38,10 @@ char keys[kKeypadRows][kKeypadColumns] = {
 
 Keypad keypad = Keypad(makeKeymap(keys), row_pins, column_pins, kKeypadRows, kKeypadColumns);
 
+
+long lastDebounceTime = 0;
+const long debounceDelay = 40; // Debounce delay in milliseconds
+
 void PlaceCursor() 
 {
   int row = cursorPos / 16;
@@ -44,9 +49,6 @@ void PlaceCursor()
   lcd.setCursor(col, row);
   lcd.cursor();
 }
-
-long lastDebounceTime = 0;
-const long debounceDelay = 40; // Debounce delay in milliseconds
 
 void UpdateRotary() 
 {
@@ -61,14 +63,15 @@ void UpdateRotary()
       int temp = newPos - pos;
     
       cursorPos -= temp;
-      Serial.println(newPos);
+      Serial.println("cursor position:");
+      Serial.println(encoder.getPosition());
       pos = newPos;
       PlaceCursor();
       lastDebounceTime = currentTime;
     }
     else
     {
-      Serial.println("try...");
+      //Serial.println("try...");
       encoder.setPosition(pos);
     }
   }
@@ -76,8 +79,12 @@ void UpdateRotary()
 
 void setup()
 {
-  Serial.begin(115200);
-  lcd.begin(16, 2);
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
+  lastClkState = digitalRead(PIN_IN1);
+  lcd.setCursor(0, 0);
+  lcd.cursor();
 }
 
 /**
@@ -256,7 +263,7 @@ double EvaluateExpression(const String &expression)
 }
 
  /**
- * Recpgnize operation for LCD to print.
+ * Recognize operation for LCD to print.
  *
  * @param key Input char
  */
@@ -301,8 +308,26 @@ void RecognizeOperationforLCD(char key)
     }
     break;
   case 'D':
-    lcd.print("/");
-    memory += "/";
+    if(shift_key == true)
+    {
+
+      String bufinput = memory;
+      memory = "";
+      for (int i=0 ; i<bufinput.length() ; i++)
+      {
+        if(i != cursorPos)
+        {
+          memory += bufinput[i];
+        }
+      }
+      lcd.clear();
+      lcd.print(memory);
+
+    }
+    else{
+      lcd.print("/");
+      memory += "/";
+    }
     break;
   }
   last_key = key;
