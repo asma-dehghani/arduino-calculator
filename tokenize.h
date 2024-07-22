@@ -1,7 +1,6 @@
 #ifndef _TOKENIZE_H_
 #define _TOKENIZE_H_
 
-#include "utility.h"
 #include "StackArray.h"
 
 /// A class to tokenize a given input string.

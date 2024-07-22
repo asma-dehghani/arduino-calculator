@@ -8,8 +8,8 @@
 #include "tokenize.h"
 
 // Define rotary encoder pins
-const int  PIN_IN1 = 2;
-const int PIN_IN2 = 3;
+const int  PIN_IN1 = 1;
+const int PIN_IN2 = 2;
 
 /* Display */
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -67,6 +67,12 @@ void UpdateRotary()
       int temp = newPos - pos;
 
       cursorPos -= temp;
+      if(cursorPos > memory.length())
+      {
+        pos = newPos;
+        cursorPos = memory.length();
+        return;
+      }
 
       pos = newPos;
       PlaceCursor();
@@ -277,62 +283,54 @@ void RecognizeOperationforLCD(char key)
     case 'A':
       if (shift_key == true)
       {
-        lcd.print("(");
-        memory += "(";
+        add_key('(');
       }
       else
       {
-        lcd.print("+");
-        memory += "+";
+        add_key('+');
       }
+      cursorPos++;
       break;
     case 'B':
       if (shift_key == true)
       {
-        lcd.print(")");
-        memory += ")";
+        add_key(')');
       }
       else
       {
-        lcd.print("-");
-        memory += "-";
+        add_key('-');
       }
+      cursorPos++;
       break;
     case 'C':
       if (shift_key == true)
       {
-        lcd.print("^");
-        memory += "^";
+        add_key('^');
       }
       else
       {
-        lcd.print("*");
-        memory += "*";
+        add_key('*');
       }
+      cursorPos++;
       break;
     case 'D':
       if (shift_key == true)
       {
+        if (cursorPos == 0)
+          break;
 
-        String bufinput = memory;
-        memory = "";
-        for (int i = 0 ; i < bufinput.length() ; i++)
-        {
-          if (i != cursorPos)
-          {
-            memory += bufinput[i];
-          }
-        }
-        lcd.clear();
-        lcd.print(memory);
-
+        memory.remove(cursorPos - 1, 1);
+        cursorPos--;
       }
       else {
-        lcd.print("/");
-        memory += "/";
+        add_key('/');
+        cursorPos++;
       }
       break;
   }
+  lcd.clear();
+  lcd.print(memory);
+  PlaceCursor();
   last_key = key;
 }
 
@@ -342,10 +340,29 @@ void RecognizeOperationforLCD(char key)
 void PrintResult()
 {
   char buffer[10];
+  lcd.clear();
+  lcd.print(memory);
   double result = EvaluateExpression(memory);
   dtostrf(result, 6, 4, buffer);
   lcd.setCursor(0, 1);
   lcd.print(buffer);
+}
+
+void add_key(char key)
+{
+  if (col == -1) 
+  {
+    String temp = memory;
+    memory = String(key) + temp;
+  }
+  else if (col < memory.length() && col != 0 && col != -1) 
+  {
+    memory = memory.substring(0, col) + String(key) + memory.substring(col);
+  } 
+  else 
+  {
+    memory += String(key);
+  }
 }
 
 /**
@@ -355,6 +372,10 @@ void PrintResult()
 */
 void ProcessInput(char key)
 {
+  PlaceCursor();
+  static char last_key = '\0';
+  if (last_key != '*')
+    last_key = memory[memory.length() - 1];
   if ('B' == key && memory == "" && !shift_key)
   {
     memory += "-";
@@ -368,6 +389,8 @@ void ProcessInput(char key)
     case 'B':
     case 'C':
     case 'D':
+      if (IsOperator(last_key))
+        return;
       RecognizeOperationforLCD(key);
       return;
     case '*':
@@ -383,29 +406,24 @@ void ProcessInput(char key)
         }
       }
       shift_key = !shift_key;
-      RecognizeOperationforLCD(key);
+      last_key = '*';
       return;
     case '#':
       PrintResult();
       shift_key = false;
       return;
   }
-
+  
   if (key)
   {
-    if (col == -1) {
-      String temp = memory;
-      memory = String(key) + temp;
-    }
-    else if (col < memory.length() && col != 0 && col != -1) {
-      memory = memory.substring(0, col) + String(key) + memory.substring(col);
-    } else {
-      memory += String(key);
-    }
-
+    if (key == '0' && (memory == "" || IsOperator(last_key)))
+      return;
+    cursorPos++;
+    add_key(key);
   }
   lcd.clear();
   lcd.print(memory);
+  PlaceCursor();
 }
 
 void loop()
