@@ -404,6 +404,7 @@ void ProcessInput(char key)
           lcd.setCursor(0, 0);
           memory = "";
           shift_key = !shift_key;
+          cursorPos = 0;
           return;
       }
       PrintResult();
