@@ -161,7 +161,7 @@ int Precedence(char op)
    @param second_number Input char
    @return the result of operation
 */
-double ApplyOperator(uint32_t first_number, uint32_t second_number, char op)
+double ApplyOperator(double first_number, double second_number, char op)
 {
   switch (op)
   {
@@ -172,7 +172,7 @@ double ApplyOperator(uint32_t first_number, uint32_t second_number, char op)
     case '*':
       return first_number * second_number;
     case '/':
-      return second_number / static_cast<double>(first_number);
+      return second_number / first_number;
     case '^':
       return pow(second_number, first_number);
     default:
@@ -218,9 +218,9 @@ double EvaluateExpression(const String &expression)
       while (!operators.isEmpty() && Precedence(operators.peek()) >= Precedence(current_operator))
       {
         // Pop two operands and one operator
-        uint32_t first_previous_operand = operands.peek();
+        double first_previous_operand = operands.peek();
         operands.pop();
-        uint32_t second_previous_operand = operands.peek();
+        double second_previous_operand = operands.peek();
         operands.pop();
         char previous_operator = operators.peek();
         operators.pop();
@@ -240,9 +240,9 @@ double EvaluateExpression(const String &expression)
       while (!operators.isEmpty() && operators.peek() != '(')
       {
         // Pop two operands and one operator
-        uint32_t first_previous_operand = operands.peek();
+        double first_previous_operand = operands.peek();
         operands.pop();
-        uint32_t second_previous_operand = operands.peek();
+        double second_previous_operand = operands.peek();
         operands.pop();
         char previous_operator = operators.peek();
         operators.pop();
@@ -258,9 +258,9 @@ double EvaluateExpression(const String &expression)
   while (!operators.isEmpty())
   {
     // Pop two operands and one operator
-    uint32_t first_previous_opernad = operands.peek();
+    double first_previous_opernad = operands.peek();
     operands.pop();
-    uint32_t second_previous_operand = operands.peek();
+    double second_previous_operand = operands.peek();
     operands.pop();
     char op = operators.peek();
     operators.pop();
@@ -374,8 +374,7 @@ void ProcessInput(char key)
 {
   PlaceCursor();
   static char last_key = '\0';
-  if (last_key != '*')
-    last_key = memory[memory.length() - 1];
+  last_key = memory[memory.length() - 1];
   if ('B' == key && memory == "" && !shift_key)
   {
     memory += "-";
@@ -389,26 +388,24 @@ void ProcessInput(char key)
     case 'B':
     case 'C':
     case 'D':
-      if (IsOperator(last_key))
+      if (IsOperator(last_key) && !shift_key)
         return;
       RecognizeOperationforLCD(key);
       return;
     case '*':
-      if (shift_key)
-      {
-        if (last_key == '*')
-        {
-          shift_key = false;
-          lcd.clear();
-          lcd.setCursor(0, 0);
-          memory = "";
-          return;
-        }
-      }
       shift_key = !shift_key;
       last_key = '*';
       return;
     case '#':
+      if (shift_key)
+      {
+          shift_key = false;
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          memory = "";
+          shift_key = !shift_key;
+          return;
+      }
       PrintResult();
       shift_key = false;
       return;
