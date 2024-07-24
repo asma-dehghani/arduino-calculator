@@ -11,6 +11,17 @@
 const int  PIN_IN1 = 1;
 const int PIN_IN2 = 2;
 
+byte sevenSegmentS[8] = {
+  B10111,
+  B11101,
+  B00000,
+  B11111,
+  B00101,
+  B00001,
+  B11111,
+  B00001
+};
+
 /* Display */
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 RotaryEncoder encoder(PIN_IN1, PIN_IN2, RotaryEncoder::LatchMode::TWO03);
@@ -45,6 +56,7 @@ Keypad keypad = Keypad(makeKeymap(keys), row_pins, column_pins, kKeypadRows, kKe
 long lastDebounceTime = 0;
 const long debounceDelay = 40; // Debounce delay in milliseconds
 
+
 void PlaceCursor()
 {
   row = cursorPos / 16;
@@ -52,6 +64,23 @@ void PlaceCursor()
   lcd.setCursor(col, row);
   lcd.cursor();
   Serial.println(col);
+}
+
+void clear_lcd()
+{
+  lcd.clear();
+  if(shift_key)
+  {
+    lcd.createChar(0, sevenSegmentS);
+    lcd.setCursor(15, 1);
+    lcd.write(byte(0));
+  }
+  else
+  {
+    lcd.setCursor(15, 1);
+    lcd.print(' ');
+  }
+  lcd.setCursor(0, 0);
 }
 
 void UpdateRotary()
@@ -90,7 +119,7 @@ void setup()
   Serial.begin(115200);
   lcd.init();
   lcd.backlight();
-  lcd.clear();
+  clear_lcd();
   lastClkState = digitalRead(PIN_IN1);
   lcd.setCursor(0, 0);
   lcd.cursor();
@@ -328,7 +357,7 @@ void RecognizeOperationforLCD(char key)
       }
       break;
   }
-  lcd.clear();
+  clear_lcd();
   lcd.print(memory);
   PlaceCursor();
   last_key = key;
@@ -340,7 +369,7 @@ void RecognizeOperationforLCD(char key)
 void PrintResult()
 {
   char buffer[10];
-  lcd.clear();
+  clear_lcd();
   lcd.print(memory);
   double result = EvaluateExpression(memory);
   dtostrf(result, 6, 4, buffer);
@@ -394,16 +423,29 @@ void ProcessInput(char key)
       return;
     case '*':
       shift_key = !shift_key;
+      if(shift_key)
+      {
+        lcd.createChar(0, sevenSegmentS);
+        lcd.setCursor(15, 1);
+        lcd.write(byte(0));
+        PlaceCursor();
+      }
+      else
+      {
+        lcd.setCursor(15, 1);
+        lcd.print(' ');
+        PlaceCursor();
+      }
       last_key = '*';
       return;
     case '#':
       if (shift_key)
       {
           shift_key = false;
-          lcd.clear();
+          clear_lcd();
           lcd.setCursor(0, 0);
           memory = "";
-          shift_key = !shift_key;
+          shift_key = false;
           cursorPos = 0;
           return;
       }
@@ -419,7 +461,7 @@ void ProcessInput(char key)
     cursorPos++;
     add_key(key);
   }
-  lcd.clear();
+  clear_lcd();
   lcd.print(memory);
   PlaceCursor();
 }
