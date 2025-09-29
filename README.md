@@ -1,2 +1,2 @@
 # arduino-calculator
-"Complex Embedded Systems " final project
+ Final project of "Complex Embedded Systems" course  
